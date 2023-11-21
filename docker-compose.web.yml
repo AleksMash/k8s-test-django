@@ -1,7 +1,6 @@
 version: "3"
 
 services:
-
   web:
     build: backend_main_django
     image: django_app
