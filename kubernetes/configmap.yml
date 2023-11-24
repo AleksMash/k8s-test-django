@@ -5,6 +5,6 @@ metadata:
   labels:
     app: web
 data:
-  DEBUG: "False"
-  ALLOWED_HOSTS: 127.0.0.1,localhost,alexmashukov.ru,192.168.59.101
+  DEBUG: "True"
+  ALLOWED_HOSTS: star-burger.test
   DATABASE_URL: postgres://test_k8s:OwOtBep9Frut@82.148.30.109:5432/test_k8s
