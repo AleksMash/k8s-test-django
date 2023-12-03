@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: clearsessions
+spec:
+  schedule: "30 2 * * *"
+  startingDeadlineSeconds: 15
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 100
+      template:
+        spec:
+          containers:
+          - name: web-pod
+            image: myapp:v1
+            imagePullPolicy: IfNotPresent
+            command: ["python", "manage.py", "clearsessions"]
+            env:
+              - name : SECRET_KEY
+                valueFrom:
+                  configMapKeyRef:
+                    name: web-config
+                    key: SECRET_KEY
+              - name : ALLOWED_HOSTS
+                valueFrom:
+                  configMapKeyRef:
+                    name: web-config
+                    key: ALLOWED_HOSTS
+              - name : DEBUG
+                valueFrom:
+                  configMapKeyRef:
+                    name: web-config
+                    key: DEBUG
+              - name : DATABASE_URL
+                valueFrom:
+                  configMapKeyRef:
+                    name: web-config
+                    key: DATABASE_URL
+          restartPolicy: Never
