@@ -1,0 +1,35 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: django-migrate
+spec:
+  ttlSecondsAfterFinished: 120
+  template:
+    spec:
+      containers:
+      - name: web
+        image: django_app:latest
+        imagePullPolicy: IfNotPresent
+        command: ["python", "manage.py", "migrate", "--noinput"]
+        env:
+          - name : SECRET_KEY
+            valueFrom:
+              configMapKeyRef:
+                name: web-config
+                key: SECRET_KEY
+          - name : ALLOWED_HOSTS
+            valueFrom:
+              configMapKeyRef:
+                name: web-config
+                key: ALLOWED_HOSTS
+          - name : DEBUG
+            valueFrom:
+              configMapKeyRef:
+                name: web-config
+                key: DEBUG
+          - name : DATABASE_URL
+            valueFrom:
+              configMapKeyRef:
+                name: web-config
+                key: DATABASE_URL
+      restartPolicy: Never

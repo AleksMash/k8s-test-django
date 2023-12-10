@@ -12,7 +12,7 @@ spec:
         spec:
           containers:
           - name: web-pod
-            image: myapp:v1
+            image: django_app:latest
             imagePullPolicy: IfNotPresent
             command: ["python", "manage.py", "clearsessions"]
             env:
