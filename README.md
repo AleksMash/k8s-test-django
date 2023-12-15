@@ -1,34 +1,81 @@
-# Django site
+## Описание проекта
 
-Докеризированный сайт на Django для экспериментов с Kubernetes.
+Проект докеризированого Django-сайта с целью изучения работы с Kubernetes.
 
-Внутри конейнера Django запускается с помощью Nginx Unit, не путать с Nginx. Сервер Nginx Unit выполняет сразу две функции: как веб-сервер он раздаёт файлы статики и медиа, а в роли сервера-приложений он запускает Python и Django. Таким образом Nginx Unit заменяет собой связку из двух сервисов Nginx и Gunicorn/uWSGI. [Подробнее про Nginx Unit](https://unit.nginx.org/).
+## Разворачиваем сайт в k8s
 
-## Как запустить dev-версию
+Для изучения разворачиваем локальный кластер k8s - устанавливаем и настраиваем инструменты локальной разработки **kubectl** и **minikube** ([инструкции по установке](https://kubernetes.io/docs/tasks/tools/)).
 
-Запустите базу данных и сайт:
+Клонируем настоящий репозитарий к себе, в терминале перейдие в корневой каталог проекта. Все  bash-команды, приведенные ниже даны относительно корневой папки проекта.
 
-```shell-session
-$ docker-compose up
+Создаем образ Django-приложения внутри кластера:
+
+```bash
+cd backend_main_django
+minikube image build -t django_app 
 ```
 
-В новом терминале не выключая сайт запустите команды для настройки базы данных:
+Устанавливаем Helm ([руководство по установке](https://helm.sh/ru/docs/intro/install/) и регистрируем в нем репозиторий чартов.
 
-```shell-session
-$ docker-compose run web ./manage.py migrate  # создаём/обновляем таблицы в БД
-$ docker-compose run web ./manage.py createsuperuser
+```bash
+helm repo add bitnami https://charts.bitnami.com/bitnami
 ```
 
-Для тонкой настройки Docker Compose используйте переменные окружения. Их названия отличаются от тех, что задаёт docker-образа, сделано это чтобы избежать конфликта имён. Внутри docker-compose.yaml настраиваются сразу несколько образов, у каждого свои переменные окружения, и поэтому их названия могут случайно пересечься. Чтобы не было конфликтов к названиям переменных окружения добавлены префиксы по названию сервиса. Список доступных переменных можно найти внутри файла [`docker-compose.yml`](./docker-compose.yml).
+Устанавливаем в кластер базу данных postgres:
 
-## Переменные окружения
+```
+helm install database bitnami/postgresql --values .\kubernetes\db_params.yml
+```
 
-Образ с Django считывает настройки из переменных окружения:
+Создаем в кластере конфигурацию с переменными окружения для Django-приложения
 
-`SECRET_KEY` -- обязательная секретная настройка Django. Это соль для генерации хэшей. Значение может быть любым, важно лишь, чтобы оно никому не было известно. [Документация Django](https://docs.djangoproject.com/en/3.2/ref/settings/#secret-key).
+```bash
+kubectl apply -f .\kubernetes\configmap_db_in_k8s.yml
+```
 
-`DEBUG` -- настройка Django для включения отладочного режима. Принимает значения `TRUE` или `FALSE`. [Документация Django](https://docs.djangoproject.com/en/3.2/ref/settings/#std:setting-DEBUG).
+Активируем Ingress-контроллер в нашем кластере
 
-`ALLOWED_HOSTS` -- настройка Django со списком разрешённых адресов. Если запрос прилетит на другой адрес, то сайт ответит ошибкой 400. Можно перечислить несколько адресов через запятую, например `127.0.0.1,192.168.0.1,site.test`. [Документация Django](https://docs.djangoproject.com/en/3.2/ref/settings/#allowed-hosts).
+```bash
+minikube addons enable ingress
+```
 
-`DATABASE_URL` -- адрес для подключения к базе данных PostgreSQL. Другие СУБД сайт не поддерживает. [Формат записи](https://github.com/jacobian/dj-database-url#url-schema).
+Деплоим наш Django - проект
+
+```bash
+kubectl apply -f .\kubernetes\deployment+service+ingress.yml
+```
+
+Узнайте IP адрес кластера
+
+```bash
+minikube ip
+```
+
+Для целей локального тестирования работы сайта пропишите в файле `hosts`  DNS имя `star-burger.test`  на IP полученный адрес кластера См. ([Файл hosts: где находится и как его изменить | Рег.ру](https://help.reg.ru/support/dns-servery-i-nastroyka-zony/rabota-s-dns-serverami/fayl-hosts-gde-nakhoditsya-i-kak-yego-izmenit)
+
+Выполните миграции:
+
+```bash
+kubectl apply -f .\kubernetes\migrate_job.yml
+```
+
+Узнайте имя, присвоенное Pod Django-приложения (команда `kubectl get pods`), после чего  
+зайдите в терминал контейнера Django-приложения...
+
+```bash
+kubectl exec -ti <имя пода Django-приложения> -- bash
+```
+
+...и создайте суперпользователя:
+
+```bash
+python manage.py createsuperuser
+```
+
+Создайте периодическую задачу для очистки устаревших сессий.
+
+```bash
+kubectl apply -f .\manifests\django-clearsessions.yml
+```
+
+Если все было настроено верно, то перейдя по адресу [http://star-burger.test](http://star-burger.test) вы окажетесь на странице входа в административную панель django. Убедитесь, что вход по имени и паролю созданного выше суперпользователя работает.
