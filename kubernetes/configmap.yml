@@ -5,7 +5,5 @@ metadata:
   labels:
     app: web
 data:
-  SECRET_KEY: "gbcgfvfvcvfv52514"
   DEBUG: "True"
   ALLOWED_HOSTS: star-burger.test
-  DATABASE_URL: postgres://test_k8s:OwOtBep9Frut@82.148.30.109:5432/test_k8s

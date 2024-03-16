@@ -16,7 +16,8 @@ spec:
     spec:
       containers:
       - name: web-pod
-        image: myapp:v1
+        imagePullPolicy: IfNotPresent
+        image: django_app:latest
         ports:
           - containerPort: 80
             protocol: TCP
@@ -24,18 +25,5 @@ spec:
         envFrom:
           - configMapRef:
               name:  web-config
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: web-service
-spec:
-  type: NodePort
-  selector:
-    app: web
-  ports:
-  - name: name-of-service-port
-    protocol: TCP
-    port: 80
-    nodePort: 30007
+          - secretRef:
+              name: web-secret
